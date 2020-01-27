@@ -1,0 +1,11 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<BorlandProject>
+	<Transactions>
+    <Transaction>1899.12.30 00:00:00.000.307,C:\Users\IS_groups\Documents\Embarcadero\Studio\Projects\Project2.dproj=C:\ис\Git-delphi\HelloWorld\HelloWorldProject.dproj</Transaction>
+    <Transaction>1899.12.30 00:00:00.000.123,C:\Users\IS_groups\Documents\Embarcadero\Studio\Projects\Unit2.dfm=C:\Users\IS_groups\Documents\Embarcadero\Studio\Projects\HelloWorld.dfm</Transaction>
+    <Transaction>1899.12.30 00:00:00.000.256,C:\Users\IS_groups\Documents\Embarcadero\Studio\Projects\HelloWorld.pas=C:\ис\Git-delphi\HelloWorld\HelloWorld.pas</Transaction>
+    <Transaction>1899.12.30 00:00:00.000.294,=C:\Users\IS_groups\Documents\Embarcadero\Studio\Projects\Unit2.pas</Transaction>
+    <Transaction>1899.12.30 00:00:00.000.123,C:\Users\IS_groups\Documents\Embarcadero\Studio\Projects\Unit2.pas=C:\Users\IS_groups\Documents\Embarcadero\Studio\Projects\HelloWorld.pas</Transaction>
+    <Transaction>1899.12.30 00:00:00.000.256,C:\Users\IS_groups\Documents\Embarcadero\Studio\Projects\HelloWorld.dfm=C:\ис\Git-delphi\HelloWorld\HelloWorld.dfm</Transaction>
+  </Transactions>
+</BorlandProject>
