@@ -1,0 +1,119 @@
+#include <iostream>
+#include <ctime>
+#include <cstdlib>
+#include <mpi.h>
+
+using namespace std;
+
+void generateMatrix(int* matrix, int rows, int cols) {
+    for (int i = 0; i < rows * cols; ++i) {
+        matrix[i] = rand() % 10;
+    }
+}
+
+void printMatrix(int* matrix, int rows, int cols) {
+    for (int i = 0; i < rows; ++i) {
+        for (int j = 0; j < cols; ++j) {
+            printf("%d ", matrix[i * cols + j]);
+        }
+        printf("\n");
+    }
+}
+
+void multiplyMatrix(int* local_A, int* B, int* local_C, int rows_per_process, int colsA, int colsB, int rank) {
+    for (int i = 0; i < rows_per_process; ++i) {
+        for (int j = 0; j < colsB; ++j) {
+            local_C[i * colsB + j] = 0;
+            for (int k = 0; k < colsA; ++k) {
+                local_C[i * colsB + j] += local_A[i * colsA + k] * B[k * colsB + j];
+            }
+        }
+    }
+}
+
+int main(int argc, char* argv[]) {
+    int rank, size;
+    int rowsA, colsA, rowsB, colsB;
+    int* A = nullptr, * B = nullptr, * C = nullptr;
+
+    MPI_Init(&argc, &argv);
+    MPI_Comm_rank(MPI_COMM_WORLD, &rank);
+    MPI_Comm_size(MPI_COMM_WORLD, &size);
+
+    srand(time(NULL));
+
+    if (rank == 0) {
+        cout << "Cols A, Rows A\n";
+        cin >> rowsA >> colsA;
+        cout << "Cols B, Rows B\n";
+        cin >> rowsB >> colsB;
+
+        if (colsA != rowsB) {
+            cerr << "Cols A != Rows B" << endl;
+            MPI_Abort(MPI_COMM_WORLD, 1);
+            return 1;
+        }
+    }
+
+    MPI_Bcast(&rowsA, 1, MPI_INT, 0, MPI_COMM_WORLD);
+    MPI_Bcast(&colsA, 1, MPI_INT, 0, MPI_COMM_WORLD);
+    MPI_Bcast(&rowsB, 1, MPI_INT, 0, MPI_COMM_WORLD);
+    MPI_Bcast(&colsB, 1, MPI_INT, 0, MPI_COMM_WORLD);
+
+    A = new int[rowsA * colsA];
+    B = new int[rowsB * colsB];
+    C = new int[rowsA * colsB];
+
+    generateMatrix(A, rowsA, colsA);
+    generateMatrix(B, rowsB, colsB);
+
+    MPI_Bcast(A, rowsA * colsA, MPI_INT, 0, MPI_COMM_WORLD);
+    MPI_Bcast(B, rowsB * colsB, MPI_INT, 0, MPI_COMM_WORLD);
+
+
+    int rows_per_process = rowsA / size;
+    int remaining_rows = rowsA % size;
+
+    if (remaining_rows != 0) {
+        if (rank < remaining_rows) {
+            rows_per_process++;
+        }
+    }
+
+    int offset = rank * rows_per_process;
+    if (rank >= remaining_rows) {
+        offset += remaining_rows;
+    }
+
+    int* local_A = new int[rows_per_process * colsA];
+    MPI_Scatter(&A[offset * colsA], rows_per_process * colsA, MPI_INT, local_A, rows_per_process * colsA, MPI_INT, 0, MPI_COMM_WORLD);
+
+
+    MPI_Bcast(B, rowsB * colsB, MPI_INT, 0, MPI_COMM_WORLD);
+
+    int* local_C = new int[rows_per_process * colsB];
+
+    multiplyMatrix(local_A, B, local_C, rows_per_process, colsA, colsB, rank);
+
+    delete[] local_A;
+
+    MPI_Gather(local_C, rows_per_process * colsB, MPI_INT, C, rows_per_process * colsB, MPI_INT, 0, MPI_COMM_WORLD);
+
+    delete[] local_C;
+
+    if (rank == 0) {
+        cout << "Matrix A:" << endl;
+        printMatrix(A, rowsA, colsA);
+        cout << "Matrix B:" << endl;
+        printMatrix(B, rowsB, colsB);
+        cout << "Matrix C:" << endl;
+        printMatrix(C, rowsA, colsB);
+
+        delete[] B;
+        delete[] C;
+    }
+
+    MPI_Finalize();
+    return 0;
+}
+
