@@ -1,0 +1,78 @@
+#include <iostream>
+#include <mpi.h>
+#include <cstdlib>
+#include <ctime>
+
+#define MATRIX_SIZE 100
+
+void forward_elimination(double A[MATRIX_SIZE][MATRIX_SIZE], double X[MATRIX_SIZE], int n, int rank, int num_processes) {
+    for (int k = 0; k < n - 1; ++k) {
+        if (k % num_processes == rank) {
+            for (int i = k + 1; i < n; ++i) {
+                double factor = A[i][k] / A[k][k];
+                for (int j = k; j < n; ++j) {
+                    A[i][j] -= factor * A[k][j];
+                }
+                X[i] -= factor * X[k];
+            }
+        }
+
+        MPI_Bcast(&A[k][0], n, MPI_DOUBLE, k % num_processes, MPI_COMM_WORLD);
+        MPI_Bcast(&X[k], 1, MPI_DOUBLE, k % num_processes, MPI_COMM_WORLD);
+    }
+}
+
+void backward_substitution(double A[MATRIX_SIZE][MATRIX_SIZE], double X[MATRIX_SIZE], int n, int rank, int num_processes) {
+    for (int k = n - 1; k >= 0; --k) {
+        if (k % num_processes == rank) {
+            X[k] /= A[k][k];
+            for (int i = k - 1; i >= 0; --i) {
+                X[i] -= A[i][k] * X[k];
+            }
+        }
+
+        MPI_Bcast(&X[k], 1, MPI_DOUBLE, k % num_processes, MPI_COMM_WORLD);
+    }
+}
+
+int main(int argc, char* argv[]) {
+    double A[MATRIX_SIZE][MATRIX_SIZE];
+    double B[MATRIX_SIZE]; 
+    double X[MATRIX_SIZE] = { 0 }; 
+
+    MPI_Init(&argc, &argv);
+
+    int num_processes, rank;
+    MPI_Comm_size(MPI_COMM_WORLD, &num_processes);
+    MPI_Comm_rank(MPI_COMM_WORLD, &rank);
+
+    int elements_per_process = MATRIX_SIZE / num_processes;
+    double local_A[elements_per_process][MATRIX_SIZE]; 
+    double local_B[elements_per_process]; 
+
+    srand(time(NULL));
+    if (rank == 0) {
+        for (int i = 0; i < MATRIX_SIZE; ++i) {
+            B[i] = rand() % 100;
+            for (int j = 0; j < MATRIX_SIZE; ++j) {
+                A[i][j] = rand() % 100;  
+            }
+        }
+    }
+
+    // Рассылка матрицы коэффициентов и вектора правой части
+    MPI_Scatter(&A[0][0], elements_per_process * MATRIX_SIZE, MPI_DOUBLE, &local_A[0][0], elements_per_process * MATRIX_SIZE, MPI_DOUBLE, 0, MPI_COMM_WORLD);
+    MPI_Scatter(B, elements_per_process, MPI_DOUBLE, local_B, elements_per_process, MPI_DOUBLE, 0, MPI_COMM_WORLD);
+
+    forward_elimination(local_A, local_B, elements_per_process, rank, num_processes);
+
+    MPI_Gather(local_B, elements_per_process, MPI_DOUBLE, X, elements_per_process, MPI_DOUBLE, 0, MPI_COMM_WORLD);
+
+    if (rank == 0) {
+        backward_substitution(A, X, MATRIX_SIZE, rank, num_processes);
+    }
+
+    MPI_Finalize();
+
+    return 0;
+}
